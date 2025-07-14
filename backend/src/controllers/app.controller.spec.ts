@@ -35,10 +35,8 @@ describe('AppController', () => {
 
       appController.getHello();
 
-      expect(Mapper.mapData).toHaveBeenCalledWith(
-        MessageDto,
-        resultFromService,
-      );
+      const mapDataSpy = jest.spyOn(Mapper, 'mapData');
+      expect(mapDataSpy).toHaveBeenCalledWith(MessageDto, resultFromService);
     });
 
     it('should return the value from the mapper', () => {
