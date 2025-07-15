@@ -1,13 +1,4 @@
 import { Expose } from 'class-transformer';
-import { IsString } from 'class-validator';
-
-export class FileUploadDto {
-  @IsString()
-  filename: string;
-
-  @IsString()
-  filetype: string;
-}
 
 export class FileResponseDto {
   @Expose()

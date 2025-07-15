@@ -18,11 +18,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { FilesService } from './files.service';
-import {
-  FileResponseDto,
-  FilesListResponseDto,
-  FileUploadDto,
-} from './dto/file.dto';
+import { FileResponseDto, FilesListResponseDto } from './dto/file.dto';
 import { UserEntity } from '../users/user.entity';
 
 interface AuthenticatedRequest extends Request {
@@ -44,41 +40,20 @@ export class FilesController {
   @Post('upload')
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(FileInterceptor('file'))
-  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async uploadFile(
     @UploadedFile() uploadedFile: Express.Multer.File,
-    @Body() fileUploadDto: FileUploadDto,
     @Request() request: AuthenticatedRequest,
   ): Promise<FileResponseDto> {
     if (!uploadedFile) {
       throw new BadRequestException('No file provided');
     }
 
-    // Validate file size and type will be handled by the service
-    // But we can add some basic validation here as well
     if (uploadedFile.size === 0) {
       throw new BadRequestException('File cannot be empty');
     }
 
-    // Use filename from DTO if provided, otherwise use the original filename
-    const filename = fileUploadDto.filename || uploadedFile.originalname;
-
-    // Use filetype from DTO if provided, otherwise use the detected mimetype
-    const filetype = fileUploadDto.filetype || uploadedFile.mimetype;
-
-    // Validate that we have a valid filename
-    if (!filename || filename.trim() === '') {
-      throw new BadRequestException('Filename is required');
-    }
-
-    // Create a modified file object with the validated metadata
-    const fileToUpload = {
-      ...uploadedFile,
-      originalname: filename,
-      mimetype: filetype,
-    };
-
-    return this.filesService.uploadFile(fileToUpload, request.user);
+    // Server computes filename and filetype from the uploaded file
+    return this.filesService.uploadFile(uploadedFile, request.user);
   }
 
   @Get(':id/download')

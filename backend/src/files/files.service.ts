@@ -46,6 +46,7 @@ export class FilesService implements IFilesService {
       region,
       endpoint,
       credentials: { accessKeyId, secretAccessKey },
+      forcePathStyle: true, // Required for S3 Ninja and other S3-compatible services
     });
   }
 
@@ -101,6 +102,7 @@ export class FilesService implements IFilesService {
         throw new Error(`Upload failed with status: ${response.status}`);
       }
     } catch (error) {
+      console.log(error);
       throw new BadRequestException('Failed to upload file to storage');
     }
 
