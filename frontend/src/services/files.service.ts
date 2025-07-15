@@ -1,6 +1,5 @@
 import axios, { AxiosResponse } from "axios";
-
-const API_BASE_URL = "http://localhost:3000/api";
+import { API_BASE_URL } from "../constants/config";
 
 export interface FileMetadata {
   id: string;
@@ -115,52 +114,6 @@ class FilesService {
       );
 
       return response.data;
-    } catch (error) {
-      throw new Error(
-        error instanceof Error ? error.message : "Failed to upload file"
-      );
-    }
-  }
-
-  // Legacy method for presigned URL uploads (kept for backward compatibility)
-  async uploadFileViaPresignedUrl(file: File): Promise<FileMetadata> {
-    // Validate file size (5MB limit)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      throw new Error("File size exceeds 5MB limit");
-    }
-
-    // Validate file type
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/gif",
-      "application/pdf",
-      "text/plain",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ];
-
-    if (!allowedTypes.includes(file.type)) {
-      throw new Error("File type not allowed");
-    }
-
-    try {
-      // Step 1: Get presigned URL
-      const presignedUrl = await this.getUploadUrl(file.name, file.type);
-
-      // Step 2: Upload file to S3
-      await this.uploadFileToS3(file, presignedUrl.uploadUrl);
-
-      // Step 3: Save metadata
-      const metadata = await this.saveFileMetadata(
-        file.name,
-        file.type,
-        presignedUrl.s3Key,
-        file.size
-      );
-
-      return metadata;
     } catch (error) {
       throw new Error(
         error instanceof Error ? error.message : "Failed to upload file"

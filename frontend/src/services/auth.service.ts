@@ -1,17 +1,16 @@
 import axios, { AxiosResponse } from "axios";
+import { API_BASE_URL } from "../constants/config";
 
-const API_BASE_URL = "http://localhost:3000/api";
-
-export interface AuthResponse {
+export interface AuthenticationResponse {
   accessToken: string;
 }
 
-export interface RegisterData {
+export interface SignUpData {
   email: string;
   password: string;
 }
 
-export interface LoginData {
+export interface SignInData {
   email: string;
   password: string;
 }
@@ -19,10 +18,10 @@ export interface LoginData {
 class AuthService {
   private accessTokenStorageKey = "accessToken";
 
-  async register(data: RegisterData): Promise<AuthResponse> {
-    const response: AxiosResponse<AuthResponse> = await axios.post(
-      `${API_BASE_URL}/auth/register`,
-      data,
+  async signUp(data: SignUpData): Promise<AuthenticationResponse> {
+    const response: AxiosResponse<AuthenticationResponse> = await axios.post(
+      `${API_BASE_URL}/auth/sign-up`,
+      data
     );
 
     const { accessToken } = response.data;
@@ -31,10 +30,10 @@ class AuthService {
     return response.data;
   }
 
-  async login(data: LoginData): Promise<AuthResponse> {
-    const response: AxiosResponse<AuthResponse> = await axios.post(
-      `${API_BASE_URL}/auth/login`,
-      data,
+  async signIn(data: SignInData): Promise<AuthenticationResponse> {
+    const response: AxiosResponse<AuthenticationResponse> = await axios.post(
+      `${API_BASE_URL}/auth/sign-in`,
+      data
     );
 
     const { accessToken } = response.data;
@@ -64,7 +63,12 @@ class AuthService {
         }
         return config;
       },
-      (error) => Promise.reject(error),
+      (error) => {
+        if (error.response.status === 401) {
+          this.logout();
+        }
+        return Promise.reject(error);
+      }
     );
   }
 }
