@@ -1,6 +1,6 @@
-import axios, { AxiosResponse } from 'axios';
+import axios, { AxiosResponse } from "axios";
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = "http://localhost:3000/api";
 
 export interface FileMetadata {
   id: string;
@@ -24,7 +24,10 @@ export interface PresignedUrl {
 }
 
 class FilesService {
-  async getUploadUrl(originalName: string, mimeType: string): Promise<PresignedUrl> {
+  async getUploadUrl(
+    originalName: string,
+    mimeType: string
+  ): Promise<PresignedUrl> {
     const response: AxiosResponse<PresignedUrl> = await axios.post(
       `${API_BASE_URL}/files/upload-url`,
       { originalName, mimeType }
@@ -34,11 +37,11 @@ class FilesService {
 
   async uploadFileToS3(file: File, uploadUrl: string): Promise<void> {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     await axios.put(uploadUrl, file, {
       headers: {
-        'Content-Type': file.type,
+        "Content-Type": file.type,
       },
     });
   }
@@ -78,22 +81,68 @@ class FilesService {
     // Validate file size (5MB limit)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      throw new Error('File size exceeds 5MB limit');
+      throw new Error("File size exceeds 5MB limit");
     }
 
     // Validate file type
     const allowedTypes = [
-      'image/jpeg',
-      'image/png',
-      'image/gif',
-      'application/pdf',
-      'text/plain',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "application/pdf",
+      "text/plain",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
 
     if (!allowedTypes.includes(file.type)) {
-      throw new Error('File type not allowed');
+      throw new Error("File type not allowed");
+    }
+
+    try {
+      // Upload file directly to backend
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response: AxiosResponse<FileMetadata> = await axios.post(
+        `${API_BASE_URL}/files/upload`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error instanceof Error ? error.message : "Failed to upload file"
+      );
+    }
+  }
+
+  // Legacy method for presigned URL uploads (kept for backward compatibility)
+  async uploadFileViaPresignedUrl(file: File): Promise<FileMetadata> {
+    // Validate file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      throw new Error("File size exceeds 5MB limit");
+    }
+
+    // Validate file type
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "application/pdf",
+      "text/plain",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      throw new Error("File type not allowed");
     }
 
     try {
@@ -114,26 +163,26 @@ class FilesService {
       return metadata;
     } catch (error) {
       throw new Error(
-        error instanceof Error ? error.message : 'Failed to upload file'
+        error instanceof Error ? error.message : "Failed to upload file"
       );
     }
   }
 
   formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return "0 Bytes";
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   }
 
   getFileTypeIcon(mimeType: string): string {
-    if (mimeType.startsWith('image/')) return '🖼️';
-    if (mimeType === 'application/pdf') return '📄';
-    if (mimeType.includes('word')) return '📝';
-    if (mimeType === 'text/plain') return '📄';
-    return '📄';
+    if (mimeType.startsWith("image/")) return "🖼️";
+    if (mimeType === "application/pdf") return "📄";
+    if (mimeType.includes("word")) return "📝";
+    if (mimeType === "text/plain") return "📄";
+    return "📄";
   }
 }
 
-export default new FilesService(); 
+export default new FilesService();

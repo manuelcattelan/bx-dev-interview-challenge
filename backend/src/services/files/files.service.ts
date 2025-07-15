@@ -10,16 +10,17 @@ import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
+  DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { FileEntity } from '../entities/file.entity';
-import { UserEntity } from '../entities/user.entity';
+import { FileEntity } from '../../entities/file.entity';
+import { UserEntity } from '../../entities/user.entity';
 import {
   FileResponseDto,
   PresignedUrlDto,
   FileListDto,
-} from '../dtos/file.dto';
-import { Mapper } from '../utils/mapper/mapper';
+} from '../../dtos/file.dto';
+import { Mapper } from '../../utils/mapper/mapper';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -61,6 +62,62 @@ export class FilesService {
         forcePathStyle: false,
       });
     }
+  }
+
+  async uploadFile(
+    file: Express.Multer.File,
+    user: UserEntity,
+  ): Promise<FileResponseDto> {
+    // Validate file type
+    const allowedMimeTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'application/pdf',
+      'text/plain',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ];
+
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException('File type not allowed');
+    }
+
+    // Validate file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      throw new BadRequestException('File size exceeds 5MB limit');
+    }
+
+    const fileExtension = file.originalname.split('.').pop();
+    const s3Key = `${user.id}/${uuidv4()}.${fileExtension}`;
+
+    // Upload file to S3
+    const command = new PutObjectCommand({
+      Bucket: this.bucketName,
+      Key: s3Key,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+    });
+
+    try {
+      await this.s3Client.send(command);
+    } catch (error) {
+      throw new BadRequestException('Failed to upload file to storage');
+    }
+
+    // Save file metadata to database
+    const fileEntity = this.fileRepository.create({
+      originalName: file.originalname,
+      filename: s3Key.split('/').pop(),
+      s3Key,
+      mimeType: file.mimetype,
+      size: file.size,
+      userId: user.id,
+    });
+
+    const savedFile = await this.fileRepository.save(fileEntity);
+    return Mapper.mapData(FileResponseDto, savedFile);
   }
 
   async generatePresignedUploadUrl(
@@ -169,6 +226,20 @@ export class FilesService {
       throw new NotFoundException('File not found');
     }
 
+    // Delete file from S3
+    const deleteCommand = new DeleteObjectCommand({
+      Bucket: this.bucketName,
+      Key: file.s3Key,
+    });
+
+    try {
+      await this.s3Client.send(deleteCommand);
+    } catch (error) {
+      console.error('Failed to delete file from S3:', error);
+      // Continue with database deletion even if S3 deletion fails
+    }
+
+    // Remove file metadata from database
     await this.fileRepository.remove(file);
   }
 }

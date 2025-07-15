@@ -9,15 +9,19 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { FilesService } from './files.service';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from '../../services/auth/jwt-auth.guard';
+import { FilesService } from '../../services/files/files.service';
 import {
   FileResponseDto,
   PresignedUrlDto,
   FileListDto,
-} from '../dtos/file.dto';
-import { UserEntity } from '../entities/user.entity';
+} from '../../dtos/file.dto';
+import { UserEntity } from '../../entities/user.entity';
 
 interface AuthenticatedRequest extends Request {
   user: UserEntity;
@@ -27,6 +31,20 @@ interface AuthenticatedRequest extends Request {
 @UseGuards(JwtAuthGuard)
 export class FilesController {
   constructor(private filesService: FilesService) {}
+
+  @Post('upload')
+  @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadFile(
+    @UploadedFile() file: Express.Multer.File,
+    @Request() req: AuthenticatedRequest,
+  ): Promise<FileResponseDto> {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    return this.filesService.uploadFile(file, req.user);
+  }
 
   @Post('upload-url')
   @HttpCode(HttpStatus.OK)
