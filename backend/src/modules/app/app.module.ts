@@ -18,7 +18,6 @@ import { FilesModule } from '../files/files.module';
         type: 'postgres',
         url: configService.get('DATABASE_URL'),
         entities: [UserEntity, FileEntity],
-        synchronize: true, // Only for development
         logging: true,
       }),
       inject: [ConfigService],

@@ -1,55 +1,24 @@
-import { IsEmail, IsString, MinLength, IsOptional } from 'class-validator';
-import { Transform, Expose } from 'class-transformer';
-
-export class LoginDto {
-  @IsEmail()
-  @Transform(({ value }: { value: string }) => value.toLowerCase())
-  email: string;
-
-  @IsString()
-  @MinLength(6)
-  password: string;
-}
+import { IsEmail, IsString, MinLength } from 'class-validator';
+import { Expose } from 'class-transformer';
 
 export class RegisterDto {
   @IsEmail()
-  @Transform(({ value }: { value: string }) => value.toLowerCase())
   email: string;
 
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
   password: string;
-
-  @IsOptional()
-  @IsString()
-  firstName?: string;
-
-  @IsOptional()
-  @IsString()
-  lastName?: string;
 }
 
-export class UserDto {
-  @Expose()
-  id: string;
-
-  @Expose()
+export class LoginDto {
+  @IsEmail()
   email: string;
 
-  @Expose()
-  firstName?: string;
-
-  @Expose()
-  lastName?: string;
-
-  @Expose()
-  createdAt: Date;
+  @IsString()
+  password: string;
 }
 
 export class AuthResponseDto {
   @Expose()
-  access_token: string;
-
-  @Expose()
-  user: UserDto;
+  accessToken: string;
 }

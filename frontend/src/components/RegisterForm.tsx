@@ -23,8 +23,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin 
   const [formData, setFormData] = useState<RegisterData>({
     email: '',
     password: '',
-    firstName: '',
-    lastName: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Partial<RegisterData>>({});
@@ -118,38 +116,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin 
               {apiError}
             </Alert>
           )}
-
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <TextField
-              fullWidth
-              id="firstName"
-              label="First Name"
-              value={formData.firstName}
-              onChange={handleChange('firstName')}
-              error={!!errors.firstName}
-              helperText={errors.firstName}
-              margin="normal"
-              autoComplete="given-name"
-              inputProps={{
-                'aria-describedby': errors.firstName ? 'firstName-error' : undefined,
-              }}
-            />
-            
-            <TextField
-              fullWidth
-              id="lastName"
-              label="Last Name"
-              value={formData.lastName}
-              onChange={handleChange('lastName')}
-              error={!!errors.lastName}
-              helperText={errors.lastName}
-              margin="normal"
-              autoComplete="family-name"
-              inputProps={{
-                'aria-describedby': errors.lastName ? 'lastName-error' : undefined,
-              }}
-            />
-          </Box>
 
           <TextField
             fullWidth

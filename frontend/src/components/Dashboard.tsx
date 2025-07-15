@@ -21,13 +21,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [currentTab, setCurrentTab] = useState(0);
-  const [user, setUser] = useState(authService.getCurrentUser());
   const [refreshFileList, setRefreshFileList] = useState(0);
-
-  useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    setUser(currentUser);
-  }, []);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setCurrentTab(newValue);
@@ -47,12 +41,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     <Box sx={{ flexGrow: 1 }}>
       <AppBar position="static">
         <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            File Upload System
-          </Typography>
-          <Typography variant="body1" sx={{ mr: 2 }}>
-            Welcome, {user?.firstName || user?.email || 'User'}
-          </Typography>
           <Button
             color="inherit"
             onClick={handleLogout}

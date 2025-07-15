@@ -20,12 +20,6 @@ export class UserEntity {
   @Exclude()
   password: string;
 
-  @Column({ nullable: true })
-  firstName?: string;
-
-  @Column({ nullable: true })
-  lastName?: string;
-
   @CreateDateColumn()
   createdAt: Date;
 
