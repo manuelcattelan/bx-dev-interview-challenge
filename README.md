@@ -37,6 +37,15 @@ To start the project, you can use the following commands:
 yarn && yarn prepare
 ```
 
+To test the project, use `docker-compose` to run the required infrastructure services (PostgreSQL database and S3-compatible storage):
+
+```bash
+cd backend
+docker-compose up -d
+```
+
+**Note:** The ports exposed in the `docker-compose` configuration are intended for local testing purposes only and should not be used in production environments.
+
 ## 🔧 Environment Variables
 
 ### Backend Environment Variables
