@@ -6,8 +6,7 @@ import {
   isValidPassword,
   ValidationRule,
 } from "../utils/validation";
-import { AuthFormConfig } from "../types/auth";
-import AuthFormContainer from "./shared/AuthFormContainer";
+import AuthFormContainer, { AuthFormConfig } from "./shared/AuthFormContainer";
 import EmailField from "./shared/EmailField";
 import PasswordField from "./shared/PasswordField";
 
@@ -59,7 +58,6 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSignUpSuccess }) => {
   const {
     formData,
     formError,
-    requestError,
     isSubmitting,
     handleFormChange,
     handleFormSubmit,
@@ -71,7 +69,6 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSignUpSuccess }) => {
   return (
     <AuthFormContainer
       config={signUpConfig}
-      requestError={requestError}
       isSubmitting={isSubmitting}
       onSubmit={handleFormSubmit}
     >

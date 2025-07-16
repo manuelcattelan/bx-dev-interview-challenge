@@ -1,146 +1,130 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
-  Card,
-  CardContent,
-  CardActions,
-  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
   CircularProgress,
-  Alert,
-  Chip,
   IconButton,
   Tooltip,
 } from "@mui/material";
-import {
-  Download,
-  Delete,
-  Refresh,
-  InsertDriveFile,
-  Image,
-  PictureAsPdf,
-  Description,
-} from "@mui/icons-material";
+import { Download, Delete, Refresh } from "@mui/icons-material";
 import filesService, { File } from "../services/files";
+import ActionButton from "./shared/ActionButton";
+import { useToast } from "../hooks/useToast";
+import { getErrorMessage } from "../utils/errors";
+import { useFileList } from "../hooks/useFileList";
 
-interface FileListProps {
-  userFiles: File[];
-  userFilesError: string | null;
-  isLoading: boolean;
-  refreshUserFiles: () => void;
-}
-
-const FileList: React.FC<FileListProps> = ({
-  userFiles,
-  isLoading,
-  userFilesError,
-  refreshUserFiles,
-}) => {
+const FileList: React.FC = () => {
   const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(
     new Set()
   );
   const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set());
 
-  const handleDownload = async (file: File) => {
+  const { showSuccessNotification, showErrorNotification } = useToast();
+  const { userFiles, userFilesError, getUserFiles, isLoading } = useFileList();
+
+  const handleFileDownload = async (file: File) => {
     try {
       setDownloadingFiles((prev) => new Set([...prev, file.id]));
-      const blob = await filesService.downloadFile(file.id);
 
-      // Create blob URL and trigger download
+      const blob = await filesService.downloadFile(file.id);
       const blobUrl = window.URL.createObjectURL(blob);
+
       const link = document.createElement("a");
       link.href = blobUrl;
       link.download = file.filename;
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
-      // Clean up the blob URL
       window.URL.revokeObjectURL(blobUrl);
-    } catch (err) {
-      const error = err as { response?: { data?: { message?: string } } };
-      // Note: We don't manage error state here anymore - parent component handles it
-      console.error("Failed to download file:", error);
+      showSuccessNotification(`${file.filename} downloaded successfully!`);
+    } catch (error) {
+      const errorMessage = getErrorMessage(error);
+      showErrorNotification(
+        `Failed to download ${file.filename}: ${errorMessage}`
+      );
     } finally {
-      setDownloadingFiles((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(file.id);
-        return newSet;
+      setDownloadingFiles((currentDownloadingFiles) => {
+        const newDownloadingFiles = new Set(currentDownloadingFiles);
+        newDownloadingFiles.delete(file.id);
+
+        return newDownloadingFiles;
       });
     }
   };
 
-  const handleDelete = async (file: File) => {
-    if (
-      !window.confirm(`Are you sure you want to delete "${file.filename}"?`)
-    ) {
+  const handleFileDelete = async (file: File) => {
+    if (!window.confirm(`Are you sure you want to delete ${file.filename}?`)) {
       return;
     }
 
     try {
-      setDeletingFiles((prev) => new Set([...prev, file.id]));
+      setDeletingFiles(
+        (currentDeletingFiles) => new Set([...currentDeletingFiles, file.id])
+      );
+
       await filesService.deleteFile(file.id);
-      // After successful deletion, refresh the list
-      refreshUserFiles();
-    } catch (err) {
-      const error = err as { response?: { data?: { message?: string } } };
-      // Note: We don't manage error state here anymore - parent component handles it
-      console.error("Failed to delete file:", error);
+      showSuccessNotification(`${file.filename} deleted successfully!`);
+      getUserFiles();
+    } catch (error) {
+      const errorMessage = getErrorMessage(error);
+      showErrorNotification(
+        `Failed to delete ${file.filename}: ${errorMessage}`
+      );
     } finally {
-      setDeletingFiles((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(file.id);
-        return newSet;
+      setDeletingFiles((currentDeletingFiles) => {
+        const newDeletingFiles = new Set(currentDeletingFiles);
+        newDeletingFiles.delete(file.id);
+
+        return newDeletingFiles;
       });
     }
   };
 
-  const getFileIcon = (filetype: string) => {
-    if (filetype.startsWith("image/")) {
-      return <Image color="primary" />;
-    }
-    if (filetype === "application/pdf") {
-      return <PictureAsPdf color="error" />;
-    }
-    if (filetype.includes("word") || filetype === "text/plain") {
-      return <Description color="info" />;
-    }
-    return <InsertDriveFile />;
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
+  const formatUploadedAtDate = (uploadedAtDate: string) => {
+    return new Date(uploadedAtDate).toLocaleDateString("en-US", {
       day: "numeric",
+      month: "short",
+      year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     });
   };
 
-  const getFileTypeChip = (filetype: string) => {
+  const formatFileType = (filetype: string) => {
     if (filetype.startsWith("image/")) {
-      return <Chip label="Image" color="primary" size="small" />;
+      return "Image";
     }
-    if (filetype === "application/pdf") {
-      return <Chip label="PDF" color="error" size="small" />;
-    }
-    if (filetype.includes("word")) {
-      return <Chip label="Word" color="info" size="small" />;
-    }
-    if (filetype === "text/plain") {
-      return <Chip label="Text" color="success" size="small" />;
-    }
-    return <Chip label="Document" color="default" size="small" />;
+    return "Document";
   };
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  const formatFileSize = (filesize: number): string => {
+    if (filesize === 0) return "0 Bytes";
+
+    const base = 1024;
+    const exponent = Math.floor(Math.log(filesize) / Math.log(base));
+    const units = ["Bytes", "KB", "MB", "GB"];
+
+    return (
+      parseFloat((filesize / Math.pow(base, exponent)).toFixed(2)) +
+      " " +
+      units[exponent]
+    );
   };
+
+  useEffect(() => {
+    if (userFilesError) {
+      showErrorNotification(userFilesError);
+    }
+  }, [userFilesError, showErrorNotification]);
 
   if (isLoading) {
     return (
@@ -175,20 +159,16 @@ const FileList: React.FC<FileListProps> = ({
         </Typography>
         <Tooltip title="Refresh file list">
           <IconButton
-            onClick={refreshUserFiles}
+            onClick={getUserFiles}
             aria-label="Refresh file list"
-            disabled={isLoading}
+            disabled={
+              isLoading || downloadingFiles.size > 0 || deletingFiles.size > 0
+            }
           >
             <Refresh />
           </IconButton>
         </Tooltip>
       </Box>
-
-      {userFilesError && (
-        <Alert severity="error" sx={{ mb: 2 }} role="alert" aria-live="polite">
-          {userFilesError}
-        </Alert>
-      )}
 
       {userFiles.length === 0 ? (
         <Box sx={{ textAlign: "center", py: 4 }}>
@@ -200,112 +180,82 @@ const FileList: React.FC<FileListProps> = ({
           </Typography>
         </Box>
       ) : (
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              sm: "repeat(2, 1fr)",
-              md: "repeat(3, 1fr)",
-            },
-            gap: 2,
-          }}
-        >
-          {userFiles.map((file) => (
-            <Box key={file.id}>
-              <Card
-                elevation={2}
-                sx={{
-                  height: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                  "&:hover": {
-                    elevation: 4,
-                    transform: "translateY(-2px)",
-                    transition: "all 0.2s ease-in-out",
-                  },
-                }}
-              >
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                    {getFileIcon(file.filetype)}
-                    <Typography
-                      variant="h6"
-                      component="h3"
-                      sx={{
-                        ml: 1,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        flexGrow: 1,
-                      }}
-                      title={file.filename}
-                    >
-                      {file.filename}
-                    </Typography>
-                  </Box>
-
-                  <Box
+        <TableContainer component={Paper}>
+          <Table sx={{ minWidth: 650 }} aria-label="files table">
+            <TableHead>
+              <TableRow>
+                <TableCell>Name</TableCell>
+                <TableCell>Type</TableCell>
+                <TableCell>Size</TableCell>
+                <TableCell>Uploaded</TableCell>
+                <TableCell align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {userFiles.map((file) => (
+                <TableRow
+                  key={file.id}
+                  sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
+                >
+                  <TableCell
+                    component="th"
+                    scope="row"
                     sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1,
-                      mb: 1,
+                      maxWidth: 200,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
                     }}
+                    title={file.filename}
                   >
-                    {getFileTypeChip(file.filetype)}
-                    <Typography variant="body2" color="text.secondary">
-                      {formatFileSize(file.size)}
-                    </Typography>
-                  </Box>
+                    {file.filename}
+                  </TableCell>
+                  <TableCell>{formatFileType(file.filetype)}</TableCell>
+                  <TableCell>{formatFileSize(file.size)}</TableCell>
+                  <TableCell>{formatUploadedAtDate(file.createdAt)}</TableCell>
+                  <TableCell align="right">
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        gap: 1,
+                      }}
+                    >
+                      <ActionButton
+                        onClick={() => handleFileDownload(file)}
+                        disabled={
+                          downloadingFiles.has(file.id) ||
+                          deletingFiles.has(file.id)
+                        }
+                        isLoading={downloadingFiles.has(file.id)}
+                        loadingText="Downloading..."
+                        defaultText="Download"
+                        icon={<Download />}
+                        ariaLabel={`Download ${file.filename}`}
+                        variant="contained"
+                      />
 
-                  <Typography variant="body2" color="text.secondary">
-                    Uploaded: {formatDate(file.createdAt)}
-                  </Typography>
-                </CardContent>
-
-                <CardActions sx={{ justifyContent: "space-between" }}>
-                  <Button
-                    variant="contained"
-                    startIcon={
-                      downloadingFiles.has(file.id) ? (
-                        <CircularProgress size={16} />
-                      ) : (
-                        <Download />
-                      )
-                    }
-                    onClick={() => handleDownload(file)}
-                    disabled={downloadingFiles.has(file.id)}
-                    size="small"
-                    aria-label={`Download ${file.filename}`}
-                  >
-                    {downloadingFiles.has(file.id)
-                      ? "Downloading..."
-                      : "Download"}
-                  </Button>
-
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    startIcon={
-                      deletingFiles.has(file.id) ? (
-                        <CircularProgress size={16} />
-                      ) : (
-                        <Delete />
-                      )
-                    }
-                    onClick={() => handleDelete(file)}
-                    disabled={deletingFiles.has(file.id)}
-                    size="small"
-                    aria-label={`Delete ${file.filename}`}
-                  >
-                    {deletingFiles.has(file.id) ? "Deleting..." : "Delete"}
-                  </Button>
-                </CardActions>
-              </Card>
-            </Box>
-          ))}
-        </Box>
+                      <ActionButton
+                        onClick={() => handleFileDelete(file)}
+                        disabled={
+                          deletingFiles.has(file.id) ||
+                          downloadingFiles.has(file.id)
+                        }
+                        isLoading={deletingFiles.has(file.id)}
+                        loadingText="Deleting..."
+                        defaultText="Delete"
+                        icon={<Delete />}
+                        ariaLabel={`Delete ${file.filename}`}
+                        variant="outlined"
+                        color="error"
+                      />
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
     </Box>
   );

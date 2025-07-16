@@ -1,9 +1,9 @@
 import React from "react";
-import authService, { SignInData } from "../services/auth";
 import { useAuthForm } from "../hooks/useAuthForm";
-import { isValidEmail, ValidationRule } from "../utils/validation";
-import { AuthFormConfig } from "../types/auth";
-import AuthFormContainer from "./shared/AuthFormContainer";
+import { isValidEmail } from "../utils/validation";
+import { ValidationRule } from "../utils/validation";
+import authService, { SignInData } from "../services/auth";
+import AuthFormContainer, { AuthFormConfig } from "./shared/AuthFormContainer";
 import EmailField from "./shared/EmailField";
 import PasswordField from "./shared/PasswordField";
 
@@ -53,7 +53,6 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSignInSuccess }) => {
   const {
     formData,
     formError,
-    requestError,
     isSubmitting,
     handleFormChange,
     handleFormSubmit,
@@ -65,7 +64,6 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSignInSuccess }) => {
   return (
     <AuthFormContainer
       config={signInConfig}
-      requestError={requestError}
       isSubmitting={isSubmitting}
       onSubmit={handleFormSubmit}
     >

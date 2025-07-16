@@ -1,84 +1,69 @@
 import React, { useState, useCallback } from "react";
-import { Box, Typography, Alert, Paper, LinearProgress } from "@mui/material";
+import { Box, Typography, Paper, LinearProgress } from "@mui/material";
 import { CloudUpload } from "@mui/icons-material";
 import filesService from "../services/files";
+import { useToast } from "../hooks/useToast";
+import { getErrorMessage } from "../utils/errors";
+import { ALLOWED_FILE_TYPES, ALLOWED_FILE_SIZE } from "../common/constants";
+import { useFileList } from "../hooks/useFileList";
 
-interface FileUploadProps {
-  onUploadSuccess: () => void;
-}
+const FileUpload: React.FC = () => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
 
-const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
-  const [dragActive, setDragActive] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<{
-    type: "success" | "error" | null;
-    message: string;
-  }>({ type: null, message: "" });
-
-  const allowedTypes = [
-    "image/jpeg",
-    "image/png",
-    "image/gif",
-    "application/pdf",
-    "text/plain",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  ];
-
-  const maxFileSize = 5 * 1024 * 1024; // 5MB
+  const { showSuccessNotification, showErrorNotification } = useToast();
+  const { getUserFiles } = useFileList();
 
   const validateFile = (file: File): string | null => {
-    if (!allowedTypes.includes(file.type)) {
+    if (!(ALLOWED_FILE_TYPES as readonly string[]).includes(file.type)) {
       return "File type not allowed. Please upload images, PDFs, or documents.";
     }
-    if (file.size > maxFileSize) {
-      return "File size exceeds 5MB limit.";
+
+    if (file.size > ALLOWED_FILE_SIZE) {
+      return `File size exceeds ${ALLOWED_FILE_SIZE / 1024 / 1024}MB limit.`;
     }
+
     return null;
   };
 
   const uploadFile = async (file: File) => {
-    setIsUploading(true);
-    setUploadStatus({ type: null, message: "" });
+    setIsUploadingFile(true);
 
     try {
       await filesService.uploadFile(file);
-      setUploadStatus({
-        type: "success",
-        message: `${file.name} uploaded successfully!`,
-      });
-      onUploadSuccess();
+
+      showSuccessNotification(`${file.name} uploaded successfully!`);
+
+      getUserFiles();
     } catch (error) {
-      const err = error as Error;
-      setUploadStatus({
-        type: "error",
-        message: err.message || "Upload failed",
-      });
+      const errorMessage = getErrorMessage(error);
+      showErrorNotification(errorMessage);
     } finally {
-      setIsUploading(false);
+      setIsUploadingFile(false);
     }
   };
 
-  const handleFile = useCallback((file: File) => {
-    const error = validateFile(file);
-    if (error) {
-      setUploadStatus({
-        type: "error",
-        message: error,
-      });
-      return;
-    }
+  const handleFileInputSelected = useCallback(
+    (file: File) => {
+      const error = validateFile(file);
+      if (error) {
+        showErrorNotification(error);
+        return;
+      }
 
-    uploadFile(file);
-  }, []);
+      uploadFile(file);
+    },
+    [showErrorNotification]
+  );
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
     if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
+      setIsDragging(true);
     } else if (e.type === "dragleave") {
-      setDragActive(false);
+      setIsDragging(false);
     }
   }, []);
 
@@ -86,18 +71,18 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
     (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      setDragActive(false);
 
+      setIsDragging(false);
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        handleFile(e.dataTransfer.files[0]);
+        handleFileInputSelected(e.dataTransfer.files[0]);
       }
     },
-    [handleFile]
+    [handleFileInputSelected, showErrorNotification]
   );
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      handleFile(e.target.files[0]);
+      handleFileInputSelected(e.target.files[0]);
     }
   };
 
@@ -112,14 +97,14 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
         sx={{
           p: 4,
           border: "2px dashed",
-          borderColor: dragActive ? "primary.main" : "grey.300",
-          backgroundColor: dragActive ? "action.hover" : "transparent",
+          borderColor: isDragging ? "primary.main" : "grey.300",
+          backgroundColor: isDragging ? "action.hover" : "transparent",
           textAlign: "center",
-          cursor: isUploading ? "not-allowed" : "pointer",
+          cursor: isUploadingFile ? "not-allowed" : "pointer",
           transition: "all 0.2s ease",
           "&:hover": {
-            borderColor: isUploading ? "grey.300" : "primary.main",
-            backgroundColor: isUploading ? "transparent" : "action.hover",
+            borderColor: isUploadingFile ? "grey.300" : "primary.main",
+            backgroundColor: isUploadingFile ? "transparent" : "action.hover",
           },
           position: "relative",
         }}
@@ -133,24 +118,24 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
       >
         <input
           type="file"
-          accept={allowedTypes.join(",")}
+          accept={ALLOWED_FILE_TYPES.join(",")}
           onChange={handleFileInputChange}
           style={{ display: "none" }}
           id="file-input"
           aria-describedby="file-input-description"
-          disabled={isUploading}
+          disabled={isUploadingFile}
         />
         <label
           htmlFor="file-input"
           style={{
-            cursor: isUploading ? "not-allowed" : "pointer",
             display: "block",
-            pointerEvents: isUploading ? "none" : "auto",
+            cursor: isUploadingFile ? "not-allowed" : "pointer",
+            pointerEvents: isUploadingFile ? "none" : "auto",
           }}
         >
           <CloudUpload sx={{ fontSize: 64, color: "grey.400", mb: 2 }} />
           <Typography variant="h6" gutterBottom>
-            {isUploading
+            {isUploadingFile
               ? "Uploading..."
               : "Drag and drop a file here or click to select"}
           </Typography>
@@ -159,35 +144,23 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
             color="text.secondary"
             id="file-input-description"
           >
-            {isUploading
+            {isUploadingFile
               ? "Please wait while your file is being uploaded"
               : "Supported formats: Images, PDFs, Documents • Max size: 5MB"}
           </Typography>
         </label>
 
-        {isUploading && (
+        {isUploadingFile && (
           <LinearProgress
             sx={{
+              borderRadius: "0 0 4px 4px",
               position: "absolute",
               bottom: 0,
-              left: 0,
               right: 0,
-              borderRadius: "0 0 4px 4px",
             }}
           />
         )}
       </Paper>
-
-      {uploadStatus.type && (
-        <Alert
-          severity={uploadStatus.type}
-          sx={{ mt: 2 }}
-          role={uploadStatus.type === "error" ? "alert" : "status"}
-          aria-live="polite"
-        >
-          {uploadStatus.message}
-        </Alert>
-      )}
     </Box>
   );
 };

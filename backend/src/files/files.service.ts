@@ -69,7 +69,7 @@ export class FilesService implements IFilesService {
           'Failed to upload file - no file provided',
         ),
       );
-      throw new BadRequestException('No file provided');
+      throw new BadRequestException('No file provided.');
     }
 
     if (fileToUpload.size === 0) {
@@ -78,7 +78,7 @@ export class FilesService implements IFilesService {
           'Failed to upload file - empty file',
         ),
       );
-      throw new BadRequestException('File cannot be empty');
+      throw new BadRequestException('File cannot be empty.');
     }
 
     if (
@@ -91,7 +91,9 @@ export class FilesService implements IFilesService {
           `Failed to validate file - invalid type: ${fileToUpload.mimetype}`,
         ),
       );
-      throw new BadRequestException('File type not allowed');
+      throw new BadRequestException(
+        'File type not allowed. You may only upload images and documents.',
+      );
     }
 
     if (fileToUpload.size > ALLOWED_FILE_SIZE) {
@@ -101,7 +103,7 @@ export class FilesService implements IFilesService {
         ),
       );
       throw new BadRequestException(
-        `File size exceeds ${ALLOWED_FILE_SIZE / 1024 / 1024}MB limit`,
+        `File size exceeds ${ALLOWED_FILE_SIZE / 1024 / 1024}MB limit.`,
       );
     }
 
@@ -132,7 +134,7 @@ export class FilesService implements IFilesService {
           ),
         );
         throw new InternalServerErrorException(
-          'Failed to upload file to storage',
+          'Failed to upload file to storage. Please try again later.',
         );
       }
 
@@ -148,7 +150,7 @@ export class FilesService implements IFilesService {
         ),
       );
       throw new InternalServerErrorException(
-        'Failed to upload file to storage',
+        'Failed to upload file to storage. Please try again later.',
       );
     }
 
@@ -175,7 +177,9 @@ export class FilesService implements IFilesService {
           `Failed to save file to database: ${error instanceof Error ? error.message : 'unknown error'}`,
         ),
       );
-      throw new InternalServerErrorException('Failed to save file');
+      throw new InternalServerErrorException(
+        'Failed to save file. Please try again later.',
+      );
     }
   }
 
@@ -206,7 +210,7 @@ export class FilesService implements IFilesService {
             `Failed to generate download URL - file not found or not owned: ${fileToDownloadId}`,
           ),
         );
-        throw new NotFoundException('File not found');
+        throw new NotFoundException('File not found.');
       }
 
       const presignedURLCommand = new GetObjectCommand({
@@ -229,7 +233,7 @@ export class FilesService implements IFilesService {
           ),
         );
         throw new InternalServerErrorException(
-          'Failed to download file from storage',
+          'Failed to download file from storage. Please try again later.',
         );
       }
 
@@ -253,7 +257,9 @@ export class FilesService implements IFilesService {
           `Failed to download file: ${error instanceof Error ? error.message : 'unknown error'}`,
         ),
       );
-      throw new InternalServerErrorException('Failed to download file');
+      throw new InternalServerErrorException(
+        'Failed to download file. Please try again later.',
+      );
     }
   }
 
@@ -269,7 +275,7 @@ export class FilesService implements IFilesService {
             `Failed to delete file - file not found or not owned: ${fileToDeleteId}`,
           ),
         );
-        throw new NotFoundException('File not found');
+        throw new NotFoundException('File not found.');
       }
 
       const deleteCommand = new DeleteObjectCommand({
@@ -299,7 +305,9 @@ export class FilesService implements IFilesService {
           `Failed to delete file: ${error instanceof Error ? error.message : 'unknown error'}`,
         ),
       );
-      throw new InternalServerErrorException('Failed to delete file');
+      throw new InternalServerErrorException(
+        'Failed to delete file. Please try again later.',
+      );
     }
   }
 }

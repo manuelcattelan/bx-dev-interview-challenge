@@ -3,7 +3,6 @@ import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
 
-import { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -18,6 +17,7 @@ import {
 
 import theme from "./theme";
 import authService from "./services/auth";
+import { ToastProvider } from "./hooks/useToast";
 
 import DashboardPage from "./pages/DashboardPage";
 import SignUpPage from "./pages/SignUpPage";
@@ -30,24 +30,26 @@ function App() {
     <StyledEngineProvider injectFirst>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <Router>
-          <Routes>
-            <Route path="/sign-in" element={<SignInPage />} />
-            <Route path="/sign-up" element={<SignUpPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route
-              path="/"
-              element={
-                authService.isAuthenticated() ? (
-                  <Navigate to="/dashboard" replace />
-                ) : (
-                  <Navigate to="/sign-in" replace />
-                )
-              }
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Router>
+        <ToastProvider>
+          <Router>
+            <Routes>
+              <Route path="/sign-in" element={<SignInPage />} />
+              <Route path="/sign-up" element={<SignUpPage />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route
+                path="/"
+                element={
+                  authService.isAuthenticated() ? (
+                    <Navigate to="/dashboard" replace />
+                  ) : (
+                    <Navigate to="/sign-in" replace />
+                  )
+                }
+              />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Router>
+        </ToastProvider>
       </ThemeProvider>
     </StyledEngineProvider>
   );

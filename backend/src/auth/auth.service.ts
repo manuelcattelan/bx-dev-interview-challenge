@@ -46,7 +46,9 @@ export class AuthService implements IAuthService {
             `Sign up failed - user already exists: ${userToSignUp.email}`,
           ),
         );
-        throw new ConflictException('User with provided email already exists');
+        throw new ConflictException(
+          'User with provided email already exists. Please try a different one.',
+        );
       }
 
       const hashedPassword = await bcrypt.hash(
@@ -78,7 +80,9 @@ export class AuthService implements IAuthService {
           `Sign up failed: ${error instanceof Error ? error.message : 'unknown error'}`,
         ),
       );
-      throw new InternalServerErrorException('Failed to create user account');
+      throw new InternalServerErrorException(
+        'Failed to create user account. Please try again later.',
+      );
     }
   }
 
@@ -98,7 +102,7 @@ export class AuthService implements IAuthService {
           `Sign in failed - user not found: ${userToSignIn.email}`,
         ),
       );
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Invalid credentials. Please try again.');
     }
 
     const isPasswordValid = await bcrypt.compare(
@@ -111,7 +115,7 @@ export class AuthService implements IAuthService {
           `Sign in failed - invalid password: ${userToSignIn.email}`,
         ),
       );
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Invalid credentials. Please try again.');
     }
 
     this.logger.log(

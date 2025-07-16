@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   AppBar,
@@ -12,27 +13,18 @@ import { Logout } from "@mui/icons-material";
 import authService from "../services/auth";
 import FileUpload from "./FileUpload";
 import FileList from "./FileList";
-import { useFileList } from "../hooks/useFileList";
 
-interface DashboardProps {
-  onLogout: () => void;
-}
-
-const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
-  const { userFiles, userFilesError, getUserFiles, isLoading } = useFileList();
-
-  const handleFileUploadSuccess = () => {
-    getUserFiles();
-  };
+const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     authService.logout();
-    onLogout();
+    navigate("/sign-in");
   };
 
   return (
     <Box sx={{ flexGrow: 1 }}>
-      <AppBar position="static">
+      <AppBar position="sticky">
         <Toolbar>
           <Button
             color="inherit"
@@ -47,14 +39,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       </AppBar>
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         <Paper elevation={3} sx={{ p: 3 }}>
-          <FileUpload onUploadSuccess={handleFileUploadSuccess} />
+          <FileUpload />
           <Divider sx={{ my: 4 }} />
-          <FileList
-            userFiles={userFiles}
-            userFilesError={userFilesError}
-            isLoading={isLoading}
-            refreshUserFiles={getUserFiles}
-          />
+          <FileList />
         </Paper>
       </Container>
     </Box>

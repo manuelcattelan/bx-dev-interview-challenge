@@ -1,19 +1,26 @@
 import React from "react";
 import {
-  Alert,
+  Container,
+  Paper,
   Box,
+  Typography,
   Button,
   CircularProgress,
-  Container,
   Link,
-  Paper,
-  Typography,
 } from "@mui/material";
-import { AuthFormConfig } from "../../types/auth";
+
+export interface AuthFormConfig {
+  title: string;
+  submitButtonText: string;
+  loadingButtonText: string;
+  bottomLinkText: string;
+  bottomLinkHref: string;
+  bottomLinkLabel: string;
+  passwordAutoComplete: string;
+}
 
 interface AuthFormContainerProps {
   config: AuthFormConfig;
-  requestError: string | null;
   isSubmitting: boolean;
   onSubmit: (event: React.FormEvent) => void;
   children: React.ReactNode;
@@ -21,7 +28,6 @@ interface AuthFormContainerProps {
 
 const AuthFormContainer: React.FC<AuthFormContainerProps> = ({
   config,
-  requestError,
   isSubmitting,
   onSubmit,
   children,
@@ -39,17 +45,6 @@ const AuthFormContainer: React.FC<AuthFormContainerProps> = ({
           >
             {config.title}
           </Typography>
-
-          {requestError && (
-            <Alert
-              severity="error"
-              sx={{ mb: 2 }}
-              role="alert"
-              aria-live="polite"
-            >
-              {requestError}
-            </Alert>
-          )}
 
           {children}
 
@@ -76,7 +71,6 @@ const AuthFormContainer: React.FC<AuthFormContainerProps> = ({
               <Link
                 href={config.bottomLinkHref}
                 aria-label={config.bottomLinkLabel}
-                onClick={isSubmitting ? (e) => e.preventDefault() : undefined}
                 sx={{
                   pointerEvents: isSubmitting ? "none" : "auto",
                   opacity: isSubmitting ? 0.5 : 1,

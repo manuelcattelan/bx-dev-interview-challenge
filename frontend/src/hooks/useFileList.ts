@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import filesService, { File } from "../services/files";
+import { getErrorMessage } from "../utils/errors";
 
 export const useFileList = () => {
   const [userFiles, setUserFiles] = useState<File[]>([]);
@@ -15,7 +16,8 @@ export const useFileList = () => {
 
       setUserFiles(fileList.files);
     } catch (error) {
-      setUserFilesError("Failed to load files");
+      const errorMessage = getErrorMessage(error);
+      setUserFilesError(errorMessage);
     } finally {
       setIsLoading(false);
     }
