@@ -41,7 +41,7 @@ yarn && yarn prepare
 
 ### Backend Environment Variables
 
-The backend requires the following environment variables for testing:
+Create a `.env` file in the `backend/` root folder with the following environment variables for testing:
 
 ```
 NODE_ENV=development
@@ -64,7 +64,7 @@ JWT_EXPIRES_IN=7d
 
 ### Frontend Environment Variables
 
-The frontend requires the following environment variables for testing:
+Create a `.env` file in the `frontend/` root folder with the following environment variables for testing:
 
 ```
 PUBLIC_API_BASE_URL=http://localhost:3000/api
