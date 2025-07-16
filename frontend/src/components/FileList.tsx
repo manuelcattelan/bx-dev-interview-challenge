@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -11,7 +11,7 @@ import {
   Chip,
   IconButton,
   Tooltip,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Download,
   Delete,
@@ -20,8 +20,8 @@ import {
   Image,
   PictureAsPdf,
   Description,
-} from '@mui/icons-material';
-import filesService, { FileMetadata } from '../services/files.service';
+} from "@mui/icons-material";
+import filesService, { File } from "../services/files.service";
 
 interface FileListProps {
   refreshTrigger: number;
@@ -29,21 +29,23 @@ interface FileListProps {
 }
 
 const FileList: React.FC<FileListProps> = ({ refreshTrigger, onRefresh }) => {
-  const [files, setFiles] = useState<FileMetadata[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>('');
-  const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string>("");
+  const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(
+    new Set()
+  );
   const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set());
 
   const loadFiles = async () => {
     try {
       setLoading(true);
-      setError('');
-      const fileList = await filesService.getUserFiles();
+      setError("");
+      const fileList = await filesService.getFiles();
       setFiles(fileList.files);
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Failed to load files');
+      setError(error.response?.data?.message || "Failed to load files");
     } finally {
       setLoading(false);
     }
@@ -53,23 +55,23 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger, onRefresh }) => {
     loadFiles();
   }, [refreshTrigger]);
 
-  const handleDownload = async (file: FileMetadata) => {
+  const handleDownload = async (file: File) => {
     try {
-      setDownloadingFiles(prev => new Set([...prev, file.id]));
-      const downloadUrl = await filesService.getDownloadUrl(file.id);
-      
+      setDownloadingFiles((prev) => new Set([...prev, file.id]));
+      const downloadUrl = await filesService.downloadFile(file.id);
+
       // Create a temporary link and trigger download
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = downloadUrl;
-      link.download = file.originalName;
+      link.download = file.filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Failed to download file');
+      setError(error.response?.data?.message || "Failed to download file");
     } finally {
-      setDownloadingFiles(prev => {
+      setDownloadingFiles((prev) => {
         const newSet = new Set(prev);
         newSet.delete(file.id);
         return newSet;
@@ -77,20 +79,22 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger, onRefresh }) => {
     }
   };
 
-  const handleDelete = async (file: FileMetadata) => {
-    if (!window.confirm(`Are you sure you want to delete "${file.originalName}"?`)) {
+  const handleDelete = async (file: File) => {
+    if (
+      !window.confirm(`Are you sure you want to delete "${file.filename}"?`)
+    ) {
       return;
     }
 
     try {
-      setDeletingFiles(prev => new Set([...prev, file.id]));
+      setDeletingFiles((prev) => new Set([...prev, file.id]));
       await filesService.deleteFile(file.id);
-      setFiles(prev => prev.filter(f => f.id !== file.id));
+      setFiles((prev) => prev.filter((f) => f.id !== file.id));
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Failed to delete file');
+      setError(error.response?.data?.message || "Failed to delete file");
     } finally {
-      setDeletingFiles(prev => {
+      setDeletingFiles((prev) => {
         const newSet = new Set(prev);
         newSet.delete(file.id);
         return newSet;
@@ -98,48 +102,63 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger, onRefresh }) => {
     }
   };
 
-  const getFileIcon = (mimeType: string) => {
-    if (mimeType.startsWith('image/')) {
+  const getFileIcon = (filetype: string) => {
+    if (filetype.startsWith("image/")) {
       return <Image color="primary" />;
     }
-    if (mimeType === 'application/pdf') {
+    if (filetype === "application/pdf") {
       return <PictureAsPdf color="error" />;
     }
-    if (mimeType.includes('word') || mimeType === 'text/plain') {
+    if (filetype.includes("word") || filetype === "text/plain") {
       return <Description color="info" />;
     }
     return <InsertDriveFile />;
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
-  const getFileTypeChip = (mimeType: string) => {
-    if (mimeType.startsWith('image/')) {
+  const getFileTypeChip = (filetype: string) => {
+    if (filetype.startsWith("image/")) {
       return <Chip label="Image" color="primary" size="small" />;
     }
-    if (mimeType === 'application/pdf') {
+    if (filetype === "application/pdf") {
       return <Chip label="PDF" color="error" size="small" />;
     }
-    if (mimeType.includes('word')) {
+    if (filetype.includes("word")) {
       return <Chip label="Word" color="info" size="small" />;
     }
-    if (mimeType === 'text/plain') {
+    if (filetype === "text/plain") {
       return <Chip label="Text" color="success" size="small" />;
     }
     return <Chip label="Document" color="default" size="small" />;
   };
 
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          py: 4,
+        }}
+      >
         <CircularProgress />
         <Typography variant="body1" sx={{ ml: 2 }}>
           Loading files...
@@ -150,7 +169,14 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger, onRefresh }) => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 3,
+        }}
+      >
         <Typography variant="h5" component="h2">
           My Files ({files.length})
         </Typography>
@@ -172,7 +198,7 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger, onRefresh }) => {
       )}
 
       {files.length === 0 ? (
-        <Box sx={{ textAlign: 'center', py: 4 }}>
+        <Box sx={{ textAlign: "center", py: 4 }}>
           <Typography variant="h6" color="text.secondary">
             No files uploaded yet
           </Typography>
@@ -181,45 +207,62 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger, onRefresh }) => {
           </Typography>
         </Box>
       ) : (
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 2 }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "repeat(2, 1fr)",
+              md: "repeat(3, 1fr)",
+            },
+            gap: 2,
+          }}
+        >
           {files.map((file) => (
             <Box key={file.id}>
               <Card
                 elevation={2}
                 sx={{
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  '&:hover': {
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  "&:hover": {
                     elevation: 4,
-                    transform: 'translateY(-2px)',
-                    transition: 'all 0.2s ease-in-out',
+                    transform: "translateY(-2px)",
+                    transition: "all 0.2s ease-in-out",
                   },
                 }}
               >
                 <CardContent sx={{ flexGrow: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    {getFileIcon(file.mimeType)}
+                  <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                    {getFileIcon(file.filetype)}
                     <Typography
                       variant="h6"
                       component="h3"
                       sx={{
                         ml: 1,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
                         flexGrow: 1,
                       }}
-                      title={file.originalName}
+                      title={file.filename}
                     >
-                      {file.originalName}
+                      {file.filename}
                     </Typography>
                   </Box>
 
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    {getFileTypeChip(file.mimeType)}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      mb: 1,
+                    }}
+                  >
+                    {getFileTypeChip(file.filetype)}
                     <Typography variant="body2" color="text.secondary">
-                      {filesService.formatFileSize(file.size)}
+                      {formatFileSize(file.size)}
                     </Typography>
                   </Box>
 
@@ -228,28 +271,42 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger, onRefresh }) => {
                   </Typography>
                 </CardContent>
 
-                <CardActions sx={{ justifyContent: 'space-between' }}>
+                <CardActions sx={{ justifyContent: "space-between" }}>
                   <Button
                     variant="contained"
-                    startIcon={downloadingFiles.has(file.id) ? <CircularProgress size={16} /> : <Download />}
+                    startIcon={
+                      downloadingFiles.has(file.id) ? (
+                        <CircularProgress size={16} />
+                      ) : (
+                        <Download />
+                      )
+                    }
                     onClick={() => handleDownload(file)}
                     disabled={downloadingFiles.has(file.id)}
                     size="small"
-                    aria-label={`Download ${file.originalName}`}
+                    aria-label={`Download ${file.filename}`}
                   >
-                    {downloadingFiles.has(file.id) ? 'Downloading...' : 'Download'}
+                    {downloadingFiles.has(file.id)
+                      ? "Downloading..."
+                      : "Download"}
                   </Button>
 
                   <Button
                     variant="outlined"
                     color="error"
-                    startIcon={deletingFiles.has(file.id) ? <CircularProgress size={16} /> : <Delete />}
+                    startIcon={
+                      deletingFiles.has(file.id) ? (
+                        <CircularProgress size={16} />
+                      ) : (
+                        <Delete />
+                      )
+                    }
                     onClick={() => handleDelete(file)}
                     disabled={deletingFiles.has(file.id)}
                     size="small"
-                    aria-label={`Delete ${file.originalName}`}
+                    aria-label={`Delete ${file.filename}`}
                   >
-                    {deletingFiles.has(file.id) ? 'Deleting...' : 'Delete'}
+                    {deletingFiles.has(file.id) ? "Deleting..." : "Delete"}
                   </Button>
                 </CardActions>
               </Card>
@@ -261,4 +318,4 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger, onRefresh }) => {
   );
 };
 
-export default FileList; 
+export default FileList;

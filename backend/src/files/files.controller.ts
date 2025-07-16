@@ -12,7 +12,7 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtGuard } from '../auth/jwt.guard';
 import { FilesService } from './files.service';
 import { FileResponseDto, FilesListResponseDto } from './dto/file.dto';
 import { UserEntity } from '../users/user.entity';
@@ -22,7 +22,7 @@ interface AuthenticatedRequest extends Request {
 }
 
 @Controller('files')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtGuard)
 export class FilesController {
   constructor(private filesService: FilesService) {}
 
