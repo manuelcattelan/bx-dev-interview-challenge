@@ -5,14 +5,16 @@ import filesService from "../services/files";
 import { useToast } from "../hooks/useToast";
 import { getErrorMessage } from "../utils/errors";
 import { ALLOWED_FILE_TYPES, ALLOWED_FILE_SIZE } from "../common/constants";
-import { useFileList } from "../hooks/useFileList";
 
-const FileUpload: React.FC = () => {
+interface FileUploadProps {
+  onFileUploaded: () => Promise<void>;
+}
+
+const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
 
   const { showSuccessNotification, showErrorNotification } = useToast();
-  const { getUserFiles } = useFileList();
 
   const validateFile = (file: File): string | null => {
     if (!(ALLOWED_FILE_TYPES as readonly string[]).includes(file.type)) {
@@ -34,7 +36,7 @@ const FileUpload: React.FC = () => {
 
       showSuccessNotification(`${file.name} uploaded successfully!`);
 
-      getUserFiles();
+      onFileUploaded();
     } catch (error) {
       const errorMessage = getErrorMessage(error);
       showErrorNotification(errorMessage);
@@ -157,6 +159,7 @@ const FileUpload: React.FC = () => {
               position: "absolute",
               bottom: 0,
               right: 0,
+              left: 0,
             }}
           />
         )}

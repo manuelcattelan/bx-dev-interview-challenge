@@ -13,9 +13,11 @@ import { Logout } from "@mui/icons-material";
 import authService from "../services/auth";
 import FileUpload from "./FileUpload";
 import FileList from "./FileList";
+import { useFileList } from "../hooks/useFileList";
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { userFiles, userFilesError, getUserFiles, isLoading } = useFileList();
 
   const handleLogout = () => {
     authService.logout();
@@ -39,9 +41,14 @@ const Dashboard: React.FC = () => {
       </AppBar>
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         <Paper elevation={3} sx={{ p: 3 }}>
-          <FileUpload />
+          <FileUpload onFileUploaded={getUserFiles} />
           <Divider sx={{ my: 4 }} />
-          <FileList />
+          <FileList
+            userFiles={userFiles}
+            userFilesError={userFilesError}
+            getUserFiles={getUserFiles}
+            isLoading={isLoading}
+          />
         </Paper>
       </Container>
     </Box>

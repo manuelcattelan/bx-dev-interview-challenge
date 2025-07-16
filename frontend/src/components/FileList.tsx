@@ -18,16 +18,26 @@ import filesService, { File } from "../services/files";
 import ActionButton from "./shared/ActionButton";
 import { useToast } from "../hooks/useToast";
 import { getErrorMessage } from "../utils/errors";
-import { useFileList } from "../hooks/useFileList";
 
-const FileList: React.FC = () => {
+interface FileListProps {
+  userFiles: File[];
+  userFilesError: string | null;
+  getUserFiles: () => Promise<void>;
+  isLoading: boolean;
+}
+
+const FileList: React.FC<FileListProps> = ({
+  userFiles,
+  userFilesError,
+  getUserFiles,
+  isLoading,
+}) => {
   const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(
     new Set()
   );
   const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set());
 
   const { showSuccessNotification, showErrorNotification } = useToast();
-  const { userFiles, userFilesError, getUserFiles, isLoading } = useFileList();
 
   const handleFileDownload = async (file: File) => {
     try {
