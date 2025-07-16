@@ -74,6 +74,7 @@ class AuthService {
       (error) => {
         if (error.response && error.response.status === 401) {
           this.logout();
+          window.location.href = "/sign-in";
         }
         return Promise.reject(error);
       }
