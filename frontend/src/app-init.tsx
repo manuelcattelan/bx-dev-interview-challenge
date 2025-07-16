@@ -23,11 +23,10 @@ import DashboardPage from "./pages/DashboardPage";
 import SignUpPage from "./pages/SignUpPage";
 import SignInPage from "./pages/SignInPage";
 
-function App() {
-  useEffect(() => {
-    authService.setupAxiosInterceptors();
-  }, []);
+// Set up axios interceptors immediately when the module loads
+authService.setupAxiosInterceptors();
 
+function App() {
   return (
     <StyledEngineProvider injectFirst>
       <ThemeProvider theme={theme}>

@@ -55,6 +55,7 @@ class AuthService {
   }
 
   setupAxiosInterceptors(): void {
+    // Request interceptor to add auth token
     axios.interceptors.request.use(
       (config) => {
         const token = this.getAuthenticationToken();
@@ -64,7 +65,16 @@ class AuthService {
         return config;
       },
       (error) => {
-        if (error.response.status === 401) {
+        return Promise.reject(error);
+      }
+    );
+
+    axios.interceptors.response.use(
+      (response) => {
+        return response;
+      },
+      (error) => {
+        if (error.response && error.response.status === 401) {
           this.logout();
         }
         return Promise.reject(error);

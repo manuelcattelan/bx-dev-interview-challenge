@@ -214,7 +214,7 @@ export class FilesService implements IFilesService {
         Key: fileToDownload.key,
       });
 
-      const presignedURL = await getSignedUrl(
+      let presignedURL = await getSignedUrl(
         this.s3Client,
         presignedURLCommand,
         { expiresIn: DOWNLOAD_PRESIGNED_URL_EXPIRES_IN_SECONDS },
@@ -222,7 +222,7 @@ export class FilesService implements IFilesService {
 
       this.logger.log(
         CorrelationIdUtil.formatLogMessage(
-          `Download URL generated: ${fileToDownloadId}`,
+          `Download URL generated for ${fileToDownloadId}`,
         ),
       );
       return presignedURL;
