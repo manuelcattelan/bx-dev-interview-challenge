@@ -119,16 +119,16 @@ export class FilesService implements IFilesService {
         expiresIn: UPLOAD_PRESIGNED_URL_EXPIRES_IN_SECONDS,
       });
 
-      const uploadRequest = await fetch(presignedURL, {
+      const uploadResponse = await fetch(presignedURL, {
         method: 'PUT',
         body: fileToUpload.buffer,
         headers: { 'Content-Type': fileToUpload.mimetype },
       });
 
-      if (!uploadRequest.ok) {
+      if (!uploadResponse.ok) {
         this.logger.error(
           CorrelationIdUtil.formatLogMessage(
-            `Failed to upload file to storage - ${uploadRequest.statusText}`,
+            `Failed to upload file to storage - ${uploadResponse.statusText}`,
           ),
         );
         throw new InternalServerErrorException(
@@ -194,7 +194,7 @@ export class FilesService implements IFilesService {
   async downloadFile(
     fileToDownloadId: string,
     user: UserEntity,
-  ): Promise<string> {
+  ): Promise<{ buffer: Buffer; filename: string; contentType: string }> {
     try {
       const fileToDownload = await this.fileRepository.findOne({
         where: { id: fileToDownloadId, userId: user.id },
@@ -214,28 +214,46 @@ export class FilesService implements IFilesService {
         Key: fileToDownload.key,
       });
 
-      let presignedURL = await getSignedUrl(
+      const presignedURL = await getSignedUrl(
         this.s3Client,
         presignedURLCommand,
         { expiresIn: DOWNLOAD_PRESIGNED_URL_EXPIRES_IN_SECONDS },
       );
 
+      const downloadResponse = await fetch(presignedURL);
+
+      if (!downloadResponse.ok) {
+        this.logger.error(
+          CorrelationIdUtil.formatLogMessage(
+            `Failed to download file from storage - ${downloadResponse.statusText}`,
+          ),
+        );
+        throw new InternalServerErrorException(
+          'Failed to download file from storage',
+        );
+      }
+
       this.logger.log(
         CorrelationIdUtil.formatLogMessage(
-          `Download URL generated for ${fileToDownloadId}`,
+          `File downloaded from storage for ${fileToDownloadId}`,
         ),
       );
-      return presignedURL;
+
+      return {
+        buffer: Buffer.from(await downloadResponse.arrayBuffer()),
+        filename: fileToDownload.filename,
+        contentType: fileToDownload.filetype,
+      };
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;
       }
       this.logger.error(
         CorrelationIdUtil.formatLogMessage(
-          `Failed to generate download URL: ${error instanceof Error ? error.message : 'unknown error'}`,
+          `Failed to download file: ${error instanceof Error ? error.message : 'unknown error'}`,
         ),
       );
-      throw new InternalServerErrorException('Failed to generate download URL');
+      throw new InternalServerErrorException('Failed to download file');
     }
   }
 

@@ -7,6 +7,9 @@ export interface IFilesService {
     fileToUpload: Express.Multer.File,
     user: UserEntity,
   ): Promise<FileResponseDto>;
-  downloadFile(fileToDownloadId: string, user: UserEntity): Promise<string>;
+  downloadFile(
+    fileToDownloadId: string,
+    user: UserEntity,
+  ): Promise<{ buffer: Buffer; filename: string; contentType: string }>;
   deleteFile(fileToDeleteId: string, user: UserEntity): Promise<void>;
 }

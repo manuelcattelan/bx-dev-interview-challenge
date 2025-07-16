@@ -35,9 +35,10 @@ class FilesService {
     return response.data;
   }
 
-  async downloadFile(fileId: string): Promise<string> {
-    const response: AxiosResponse<string> = await axios.get(
-      `${API_BASE_URL}/files/${fileId}/download`
+  async downloadFile(fileId: string): Promise<Blob> {
+    const response: AxiosResponse<Blob> = await axios.get(
+      `${API_BASE_URL}/files/${fileId}/download`,
+      { responseType: "blob" }
     );
     return response.data;
   }

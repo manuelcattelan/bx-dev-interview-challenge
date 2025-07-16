@@ -58,15 +58,19 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger, onRefresh }) => {
   const handleDownload = async (file: File) => {
     try {
       setDownloadingFiles((prev) => new Set([...prev, file.id]));
-      const downloadUrl = await filesService.downloadFile(file.id);
+      const blob = await filesService.downloadFile(file.id);
 
-      // Create a temporary link and trigger download
+      // Create blob URL and trigger download
+      const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = downloadUrl;
+      link.href = blobUrl;
       link.download = file.filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
+      // Clean up the blob URL
+      window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
       setError(error.response?.data?.message || "Failed to download file");

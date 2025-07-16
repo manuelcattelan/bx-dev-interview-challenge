@@ -10,12 +10,14 @@ import {
   HttpStatus,
   UseInterceptors,
   UploadedFile,
+  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtGuard } from '../auth/jwt.guard';
 import { FilesService } from './files.service';
 import { FileResponseDto, FilesListResponseDto } from './dto/file.dto';
 import { UserEntity } from '../users/user.entity';
+import { Response } from 'express';
 
 interface AuthenticatedRequest extends Request {
   user: UserEntity;
@@ -47,13 +49,14 @@ export class FilesController {
   async downloadFile(
     @Param('id') fileToDownloadId: string,
     @Request() request: AuthenticatedRequest,
-  ): Promise<{ presignedURL: string }> {
-    const presignedURL = await this.filesService.downloadFile(
-      fileToDownloadId,
-      request.user,
-    );
+    @Res() res: Response,
+  ): Promise<void> {
+    const { buffer, filename, contentType } =
+      await this.filesService.downloadFile(fileToDownloadId, request.user);
 
-    return { presignedURL };
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
   }
 
   @Delete(':id')
