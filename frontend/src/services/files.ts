@@ -1,5 +1,5 @@
 import axios, { AxiosResponse } from "axios";
-import { API_BASE_URL } from "../constants/config";
+import { API_BASE_URL } from "../common/config";
 
 export interface File {
   id: string;

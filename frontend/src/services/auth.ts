@@ -1,5 +1,5 @@
 import axios, { AxiosResponse } from "axios";
-import { API_BASE_URL } from "../constants/config";
+import { API_BASE_URL } from "../common/config";
 
 export interface AuthenticationResponse {
   accessToken: string;
@@ -55,7 +55,6 @@ class AuthService {
   }
 
   setupAxiosInterceptors(): void {
-    // Request interceptor to add auth token
     axios.interceptors.request.use(
       (config) => {
         const token = this.getAuthenticationToken();
@@ -68,7 +67,6 @@ class AuthService {
         return Promise.reject(error);
       }
     );
-
     axios.interceptors.response.use(
       (response) => {
         return response;

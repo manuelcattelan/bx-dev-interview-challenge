@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -24,36 +24,22 @@ import {
 import filesService, { File } from "../services/files";
 
 interface FileListProps {
-  refreshTrigger: number;
-  onRefresh: () => void;
+  userFiles: File[];
+  userFilesError: string | null;
+  isLoading: boolean;
+  refreshUserFiles: () => void;
 }
 
-const FileList: React.FC<FileListProps> = ({ refreshTrigger, onRefresh }) => {
-  const [files, setFiles] = useState<File[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>("");
+const FileList: React.FC<FileListProps> = ({
+  userFiles,
+  isLoading,
+  userFilesError,
+  refreshUserFiles,
+}) => {
   const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(
     new Set()
   );
   const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set());
-
-  const loadFiles = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      const fileList = await filesService.getFiles();
-      setFiles(fileList.files);
-    } catch (err) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || "Failed to load files");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadFiles();
-  }, [refreshTrigger]);
 
   const handleDownload = async (file: File) => {
     try {
@@ -73,7 +59,8 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger, onRefresh }) => {
       window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || "Failed to download file");
+      // Note: We don't manage error state here anymore - parent component handles it
+      console.error("Failed to download file:", error);
     } finally {
       setDownloadingFiles((prev) => {
         const newSet = new Set(prev);
@@ -93,10 +80,12 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger, onRefresh }) => {
     try {
       setDeletingFiles((prev) => new Set([...prev, file.id]));
       await filesService.deleteFile(file.id);
-      setFiles((prev) => prev.filter((f) => f.id !== file.id));
+      // After successful deletion, refresh the list
+      refreshUserFiles();
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || "Failed to delete file");
+      // Note: We don't manage error state here anymore - parent component handles it
+      console.error("Failed to delete file:", error);
     } finally {
       setDeletingFiles((prev) => {
         const newSet = new Set(prev);
@@ -153,7 +142,7 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger, onRefresh }) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Box
         sx={{
@@ -182,26 +171,26 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger, onRefresh }) => {
         }}
       >
         <Typography variant="h5" component="h2">
-          My Files ({files.length})
+          My Files ({userFiles.length})
         </Typography>
         <Tooltip title="Refresh file list">
           <IconButton
-            onClick={onRefresh}
+            onClick={refreshUserFiles}
             aria-label="Refresh file list"
-            disabled={loading}
+            disabled={isLoading}
           >
             <Refresh />
           </IconButton>
         </Tooltip>
       </Box>
 
-      {error && (
+      {userFilesError && (
         <Alert severity="error" sx={{ mb: 2 }} role="alert" aria-live="polite">
-          {error}
+          {userFilesError}
         </Alert>
       )}
 
-      {files.length === 0 ? (
+      {userFiles.length === 0 ? (
         <Box sx={{ textAlign: "center", py: 4 }}>
           <Typography variant="h6" color="text.secondary">
             No files uploaded yet
@@ -222,7 +211,7 @@ const FileList: React.FC<FileListProps> = ({ refreshTrigger, onRefresh }) => {
             gap: 2,
           }}
         >
-          {files.map((file) => (
+          {userFiles.map((file) => (
             <Box key={file.id}>
               <Card
                 elevation={2}

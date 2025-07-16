@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   Box,
   AppBar,
@@ -12,16 +12,17 @@ import { Logout } from "@mui/icons-material";
 import authService from "../services/auth";
 import FileUpload from "./FileUpload";
 import FileList from "./FileList";
+import { useFileList } from "../hooks/useFileList";
 
 interface DashboardProps {
   onLogout: () => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
-  const [refreshFileList, setRefreshFileList] = useState(0);
+  const { userFiles, userFilesError, getUserFiles, isLoading } = useFileList();
 
   const handleFileUploadSuccess = () => {
-    setRefreshFileList((prev) => prev + 1);
+    getUserFiles();
   };
 
   const handleLogout = () => {
@@ -38,21 +39,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             onClick={handleLogout}
             startIcon={<Logout />}
             aria-label="Logout from your account"
+            sx={{ marginLeft: "auto" }}
           >
             Logout
           </Button>
         </Toolbar>
       </AppBar>
-
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         <Paper elevation={3} sx={{ p: 3 }}>
           <FileUpload onUploadSuccess={handleFileUploadSuccess} />
-
           <Divider sx={{ my: 4 }} />
-
           <FileList
-            refreshTrigger={refreshFileList}
-            onRefresh={() => setRefreshFileList((prev) => prev + 1)}
+            userFiles={userFiles}
+            userFilesError={userFilesError}
+            isLoading={isLoading}
+            refreshUserFiles={getUserFiles}
           />
         </Paper>
       </Container>

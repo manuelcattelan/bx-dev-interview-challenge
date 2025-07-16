@@ -23,7 +23,6 @@ import DashboardPage from "./pages/DashboardPage";
 import SignUpPage from "./pages/SignUpPage";
 import SignInPage from "./pages/SignInPage";
 
-// Set up axios interceptors immediately when the module loads
 authService.setupAxiosInterceptors();
 
 function App() {
