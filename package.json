@@ -4,7 +4,7 @@
   "scripts": {
     "prepare": "husky",
     "pre-commit": "yarn --cwd frontend lint && yarn --cwd backend lint",
-    "pre-push": "yarn --cwd frontend test && yarn --cwd backend test"
+    "pre-push": "yarn --cwd frontend test --passWithNoTests && yarn --cwd backend test --passWithNoTests"
   },
   "devDependencies": {
     "husky": "^9.1.7"

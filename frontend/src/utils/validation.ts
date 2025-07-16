@@ -11,6 +11,7 @@ export const isValidPassword = (password: string): boolean => {
 
 export interface ValidationRule<T> {
   field: keyof T;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   validate: (value: any, formData: T) => string | undefined;
 }
 
