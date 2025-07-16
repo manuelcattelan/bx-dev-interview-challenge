@@ -1,9 +1,7 @@
 import React from "react";
 import { useNavigate, Navigate } from "react-router-dom";
-
 import Dashboard from "../components/Dashboard";
-
-import authService from "../services/auth.service";
+import authService from "../services/auth";
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();

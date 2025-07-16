@@ -9,7 +9,7 @@ import {
   Divider,
 } from "@mui/material";
 import { Logout } from "@mui/icons-material";
-import authService from "../services/auth.service";
+import authService from "../services/auth";
 import FileUpload from "./FileUpload";
 import FileList from "./FileList";
 

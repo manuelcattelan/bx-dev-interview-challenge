@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { Box, Typography, Alert, Paper, LinearProgress } from "@mui/material";
 import { CloudUpload } from "@mui/icons-material";
-import filesService from "../services/files.service";
+import filesService from "../services/files";
 
 interface FileUploadProps {
   onUploadSuccess: () => void;

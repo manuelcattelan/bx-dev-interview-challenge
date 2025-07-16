@@ -21,7 +21,7 @@ import {
   PictureAsPdf,
   Description,
 } from "@mui/icons-material";
-import filesService, { File } from "../services/files.service";
+import filesService, { File } from "../services/files";
 
 interface FileListProps {
   refreshTrigger: number;

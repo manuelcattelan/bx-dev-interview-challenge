@@ -17,7 +17,7 @@ import {
 } from "@mui/material";
 
 import theme from "./theme";
-import authService from "./services/auth.service";
+import authService from "./services/auth";
 
 import DashboardPage from "./pages/DashboardPage";
 import SignUpPage from "./pages/SignUpPage";
