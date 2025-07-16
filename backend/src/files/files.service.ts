@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -16,22 +18,29 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { FileEntity } from './file.entity';
 import { UserEntity } from '../users/user.entity';
 import { FileResponseDto, FilesListResponseDto } from './dto/file.dto';
-import { Mapper } from '../common/utils/mapper/mapper';
+import { Mapper } from '../common/utils/mapper.util';
+import {
+  UPLOAD_PRESIGNED_URL_EXPIRES_IN_SECONDS,
+  DOWNLOAD_PRESIGNED_URL_EXPIRES_IN_SECONDS,
+  ALLOWED_MIME_TYPES,
+  ALLOWED_FILE_SIZE,
+} from '../common/constants';
+import { CorrelationIdUtil } from '../common/utils/correlation-id.util';
 import { v4 as uuidv4 } from 'uuid';
 import { IFilesService } from './files.service.interface';
 
 @Injectable()
 export class FilesService implements IFilesService {
+  private readonly logger = new Logger(FilesService.name);
   private s3Client: S3Client;
-  private bucketName: string;
+  private s3Bucket: string;
 
   constructor(
     @InjectRepository(FileEntity)
     private fileRepository: Repository<FileEntity>,
     private configService: ConfigService,
   ) {
-    this.bucketName =
-      this.configService.get('s3.bucketName') || 'default-bucket';
+    this.s3Bucket = this.configService.get('s3.bucketName') || 'default-bucket';
 
     const region = this.configService.get<string>('s3.region') || 'us-east-1';
     const endpoint =
@@ -46,134 +55,233 @@ export class FilesService implements IFilesService {
       region,
       endpoint,
       credentials: { accessKeyId, secretAccessKey },
-      forcePathStyle: true, // Required for S3 Ninja and other S3-compatible services
+      forcePathStyle: true,
     });
   }
 
   async uploadFile(
-    file: Express.Multer.File,
+    fileToUpload: Express.Multer.File,
     user: UserEntity,
   ): Promise<FileResponseDto> {
-    const allowedMimeTypes = [
-      'image/jpeg',
-      'image/png',
-      'image/gif',
-      'application/pdf',
-      'text/plain',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    ];
+    if (!fileToUpload) {
+      this.logger.warn(
+        CorrelationIdUtil.formatLogMessage(
+          'Failed to upload file - no file provided',
+        ),
+      );
+      throw new BadRequestException('No file provided');
+    }
 
-    if (!allowedMimeTypes.includes(file.mimetype)) {
+    if (fileToUpload.size === 0) {
+      this.logger.warn(
+        CorrelationIdUtil.formatLogMessage(
+          'Failed to upload file - empty file',
+        ),
+      );
+      throw new BadRequestException('File cannot be empty');
+    }
+
+    if (
+      !ALLOWED_MIME_TYPES.includes(
+        fileToUpload.mimetype as (typeof ALLOWED_MIME_TYPES)[number],
+      )
+    ) {
+      this.logger.warn(
+        CorrelationIdUtil.formatLogMessage(
+          `Failed to validate file - invalid type: ${fileToUpload.mimetype}`,
+        ),
+      );
       throw new BadRequestException('File type not allowed');
     }
 
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      throw new BadRequestException('File size exceeds 5MB limit');
+    if (fileToUpload.size > ALLOWED_FILE_SIZE) {
+      this.logger.warn(
+        CorrelationIdUtil.formatLogMessage(
+          `Failed to validate file - size too large: ${fileToUpload.size} bytes`,
+        ),
+      );
+      throw new BadRequestException(
+        `File size exceeds ${ALLOWED_FILE_SIZE / 1024 / 1024}MB limit`,
+      );
     }
 
-    const fileExtension = file.originalname.split('.').pop();
-    const s3Key = `${user.id}/${uuidv4()}.${fileExtension}`;
+    const uploadedFileExtension = fileToUpload.originalname.split('.').pop();
+    const uploadedFileKey = `${user.id}/${uuidv4()}.${uploadedFileExtension}`;
 
-    // Generate presigned URL for upload
-    const command = new PutObjectCommand({
-      Bucket: this.bucketName,
-      Key: s3Key,
-      ContentType: file.mimetype,
+    const uploadCommand = new PutObjectCommand({
+      Bucket: this.s3Bucket,
+      Key: uploadedFileKey,
+      ContentType: fileToUpload.mimetype,
     });
 
     try {
-      // Generate presigned URL
-      const presignedUrl = await getSignedUrl(this.s3Client, command, {
-        expiresIn: 3600, // 1 hour
+      const presignedURL = await getSignedUrl(this.s3Client, uploadCommand, {
+        expiresIn: UPLOAD_PRESIGNED_URL_EXPIRES_IN_SECONDS,
       });
 
-      // Upload file using presigned URL
-      const response = await fetch(presignedUrl, {
+      const uploadRequest = await fetch(presignedURL, {
         method: 'PUT',
-        body: file.buffer,
-        headers: {
-          'Content-Type': file.mimetype,
-        },
+        body: fileToUpload.buffer,
+        headers: { 'Content-Type': fileToUpload.mimetype },
       });
 
-      if (!response.ok) {
-        throw new Error(`Upload failed with status: ${response.status}`);
+      if (!uploadRequest.ok) {
+        this.logger.error(
+          CorrelationIdUtil.formatLogMessage(
+            `Failed to upload file to storage - ${uploadRequest.statusText}`,
+          ),
+        );
+        throw new InternalServerErrorException(
+          'Failed to upload file to storage',
+        );
       }
+
+      this.logger.log(
+        CorrelationIdUtil.formatLogMessage(
+          `File uploaded to storage: ${uploadedFileKey}`,
+        ),
+      );
     } catch (error) {
-      console.log(error);
-      throw new BadRequestException('Failed to upload file to storage');
+      this.logger.error(
+        CorrelationIdUtil.formatLogMessage(
+          `Failed to upload file to storage: ${error instanceof Error ? error.message : 'unknown error'}`,
+        ),
+      );
+      throw new InternalServerErrorException(
+        'Failed to upload file to storage',
+      );
     }
 
-    const fileEntity = this.fileRepository.create({
-      userId: user.id,
-      filename: file.originalname,
-      filetype: file.mimetype,
-      size: file.size,
-      key: s3Key,
-    });
+    try {
+      const createdFile = this.fileRepository.create({
+        userId: user.id,
+        filename: fileToUpload.originalname,
+        filetype: fileToUpload.mimetype,
+        size: fileToUpload.size,
+        key: uploadedFileKey,
+      });
 
-    const savedFile = await this.fileRepository.save(fileEntity);
-    return Mapper.mapData(FileResponseDto, savedFile);
+      const savedFile = await this.fileRepository.save(createdFile);
+      this.logger.log(
+        CorrelationIdUtil.formatLogMessage(
+          `File saved to database: ${savedFile.id}`,
+        ),
+      );
+
+      return Mapper.mapData(FileResponseDto, savedFile);
+    } catch (error) {
+      this.logger.error(
+        CorrelationIdUtil.formatLogMessage(
+          `Failed to save file to database: ${error instanceof Error ? error.message : 'unknown error'}`,
+        ),
+      );
+      throw new InternalServerErrorException('Failed to save file');
+    }
   }
 
   async getFiles(user: UserEntity): Promise<FilesListResponseDto> {
-    const files = await this.fileRepository.find({
+    const userFiles = await this.fileRepository.find({
       where: { userId: user.id },
       order: { createdAt: 'DESC' },
     });
 
-    const fileResponses = files.map((file) => {
-      const fileDto = Mapper.mapData(FileResponseDto, file);
-      return fileDto;
-    });
-
     return {
-      files: fileResponses,
-      filesCount: files.length,
+      files: Mapper.mapArrayData(FileResponseDto, userFiles),
+      filesCount: userFiles.length,
     };
   }
 
-  async downloadFile(fileId: string, user: UserEntity): Promise<string> {
-    const file = await this.fileRepository.findOne({
-      where: { id: fileId, userId: user.id },
-    });
+  async downloadFile(
+    fileToDownloadId: string,
+    user: UserEntity,
+  ): Promise<string> {
+    try {
+      const fileToDownload = await this.fileRepository.findOne({
+        where: { id: fileToDownloadId, userId: user.id },
+      });
 
-    if (!file) {
-      throw new NotFoundException('File not found');
+      if (!fileToDownload) {
+        this.logger.warn(
+          CorrelationIdUtil.formatLogMessage(
+            `Failed to generate download URL - file not found or not owned: ${fileToDownloadId}`,
+          ),
+        );
+        throw new NotFoundException('File not found');
+      }
+
+      const presignedURLCommand = new GetObjectCommand({
+        Bucket: this.s3Bucket,
+        Key: fileToDownload.key,
+      });
+
+      const presignedURL = await getSignedUrl(
+        this.s3Client,
+        presignedURLCommand,
+        { expiresIn: DOWNLOAD_PRESIGNED_URL_EXPIRES_IN_SECONDS },
+      );
+
+      this.logger.log(
+        CorrelationIdUtil.formatLogMessage(
+          `Download URL generated: ${fileToDownloadId}`,
+        ),
+      );
+      return presignedURL;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      this.logger.error(
+        CorrelationIdUtil.formatLogMessage(
+          `Failed to generate download URL: ${error instanceof Error ? error.message : 'unknown error'}`,
+        ),
+      );
+      throw new InternalServerErrorException('Failed to generate download URL');
     }
-
-    const command = new GetObjectCommand({
-      Bucket: this.bucketName,
-      Key: file.key,
-    });
-
-    const downloadUrl = await getSignedUrl(this.s3Client, command, {
-      expiresIn: 3600,
-    });
-    return downloadUrl;
   }
 
-  async deleteFile(fileId: string, user: UserEntity): Promise<void> {
-    const fileToDelete = await this.fileRepository.findOne({
-      where: { id: fileId, userId: user.id },
-    });
-
-    if (!fileToDelete) {
-      throw new NotFoundException('File not found');
-    }
-
-    const deleteCommand = new DeleteObjectCommand({
-      Bucket: this.bucketName,
-      Key: fileToDelete.key,
-    });
-
+  async deleteFile(fileToDeleteId: string, user: UserEntity): Promise<void> {
     try {
+      const fileToDelete = await this.fileRepository.findOne({
+        where: { id: fileToDeleteId, userId: user.id },
+      });
+
+      if (!fileToDelete) {
+        this.logger.warn(
+          CorrelationIdUtil.formatLogMessage(
+            `Failed to delete file - file not found or not owned: ${fileToDeleteId}`,
+          ),
+        );
+        throw new NotFoundException('File not found');
+      }
+
+      const deleteCommand = new DeleteObjectCommand({
+        Bucket: this.s3Bucket,
+        Key: fileToDelete.key,
+      });
+
       await this.s3Client.send(deleteCommand);
+      this.logger.log(
+        CorrelationIdUtil.formatLogMessage(
+          `File deleted from storage: ${fileToDelete.key}`,
+        ),
+      );
+
       await this.fileRepository.remove(fileToDelete);
+      this.logger.log(
+        CorrelationIdUtil.formatLogMessage(
+          `File deleted from database: ${fileToDeleteId}`,
+        ),
+      );
     } catch (error) {
-      throw new BadRequestException('Failed to delete file from storage');
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      this.logger.error(
+        CorrelationIdUtil.formatLogMessage(
+          `Failed to delete file: ${error instanceof Error ? error.message : 'unknown error'}`,
+        ),
+      );
+      throw new InternalServerErrorException('Failed to delete file');
     }
   }
 }

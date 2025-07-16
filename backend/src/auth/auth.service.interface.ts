@@ -3,9 +3,8 @@ import {
   SignInDto,
   AuthenticationResponseDto,
 } from './dto/auth.dto';
-import { UserEntity } from '../users/user.entity';
 
 export interface IAuthService {
-  signUp(signUpDto: SignUpDto): Promise<AuthenticationResponseDto>;
-  signIn(signInDto: SignInDto): Promise<AuthenticationResponseDto>;
+  signUp(userToSignUp: SignUpDto): Promise<AuthenticationResponseDto>;
+  signIn(userToSignIn: SignInDto): Promise<AuthenticationResponseDto>;
 }

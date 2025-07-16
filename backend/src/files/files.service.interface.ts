@@ -4,9 +4,9 @@ import { UserEntity } from '../users/user.entity';
 export interface IFilesService {
   getFiles(user: UserEntity): Promise<FilesListResponseDto>;
   uploadFile(
-    file: Express.Multer.File,
+    fileToUpload: Express.Multer.File,
     user: UserEntity,
   ): Promise<FileResponseDto>;
-  downloadFile(fileId: string, user: UserEntity): Promise<string>;
-  deleteFile(fileId: string, user: UserEntity): Promise<void>;
+  downloadFile(fileToDownloadId: string, user: UserEntity): Promise<string>;
+  deleteFile(fileToDeleteId: string, user: UserEntity): Promise<void>;
 }

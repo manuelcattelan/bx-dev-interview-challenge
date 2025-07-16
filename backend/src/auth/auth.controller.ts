@@ -13,16 +13,16 @@ export class AuthController {
   @Post('sign-up')
   @HttpCode(HttpStatus.CREATED)
   async signUp(
-    @Body() signUpDto: SignUpDto,
+    @Body() userToSignUp: SignUpDto,
   ): Promise<AuthenticationResponseDto> {
-    return this.authService.signUp(signUpDto);
+    return this.authService.signUp(userToSignUp);
   }
 
   @Post('sign-in')
   @HttpCode(HttpStatus.OK)
   async signIn(
-    @Body() signInDto: SignInDto,
+    @Body() userToSignIn: SignInDto,
   ): Promise<AuthenticationResponseDto> {
-    return this.authService.signIn(signInDto);
+    return this.authService.signIn(userToSignIn);
   }
 }

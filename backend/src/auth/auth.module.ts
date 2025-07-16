@@ -15,11 +15,11 @@ import { JwtAuthGuard } from './jwt-auth.guard';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
+      inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         secret: configService.get('jwt.secret'),
         signOptions: { expiresIn: configService.get('jwt.expiresIn') },
       }),
-      inject: [ConfigService],
     }),
   ],
   providers: [AuthService, JwtStrategy, JwtAuthGuard],
